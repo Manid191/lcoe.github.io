@@ -1409,7 +1409,7 @@
                 Chart.defaults.font.size = 14;
                 const common = {
                     responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom' }, tooltip: { displayColors: true } }
+                    plugins: { legend: { position: 'top' }, tooltip: { displayColors: true } }
                 };
 
                 // 1. LCOE
@@ -1428,7 +1428,14 @@
                         },
                         options: {
                             ...common,
-                            scales: { x: { stacked: true }, y: { stacked: true, title: { display: true, text: 'THB/kWh' } } },
+                            scales: {
+                                x: { stacked: true },
+                                y: {
+                                    stacked: true,
+                                    title: { display: true, text: 'THB/kWh' },
+                                    afterFit: (axis) => { axis.width = 80; }
+                                }
+                            },
                             plugins: {
                                 datalabels: {
                                     display: true,
@@ -1488,6 +1495,11 @@
                                             return label;
                                         }
                                     }
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    afterFit: (axis) => { axis.width = 80; }
                                 }
                             }
                         }
