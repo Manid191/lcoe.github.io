@@ -36,20 +36,6 @@ window.SolarConfig = {
             enabled: false,
             activeTab: 0,
             projects: createDefaultProjects(3, false)
-        },
-        {
-            id: 4,
-            name: "Supplier D",
-            enabled: false,
-            activeTab: 0,
-            projects: createDefaultProjects(3, false)
-        },
-        {
-            id: 5,
-            name: "Supplier E",
-            enabled: false,
-            activeTab: 0,
-            projects: createDefaultProjects(3, false)
         }
     ]
 };
