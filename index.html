@@ -1,0 +1,1756 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LCOE & PPA Calculator (Portable v2.3)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.344.0/lucide.min.js"></script>
+    <script src="config.js"></script>
+    <style>
+        :root {
+            --primary: #1e40af;
+            --primary-hover: #1e3a8a;
+            --secondary: #475569;
+            --accent: #f59e0b;
+            --danger: #dc2626;
+            --success: #16a34a;
+            --background: #f1f5f9;
+            --card-bg: #ffffff;
+            --card-border: #e2e8f0;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --highlight: #0ea5e9;
+            --input-bg: #ffffff;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', 'Segoe UI', 'Roboto', sans-serif;
+            background-color: var(--background);
+            color: var(--text-main);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .glass-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        header h1 {
+            font-size: 2.25rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--primary);
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 0.5rem;
+            padding: 1.75rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid var(--background);
+            padding-bottom: 0.75rem;
+        }
+
+        .card-header h2 {
+            font-size: 1.25rem;
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        .grid-inputs {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .input-group label {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        input[type="number"],
+        input[type="text"],
+        select {
+            background: var(--input-bg);
+            border: 1px solid #cbd5e1;
+            border-radius: 0.375rem;
+            padding: 0.65rem;
+            color: var(--text-main);
+            font-family: inherit;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
+        }
+
+        .highlight {
+            background-color: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .highlight-val {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .section-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .section-header h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .supplier-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .supplier-card {
+            position: relative;
+            padding: 1.5rem;
+            background: white;
+            border: 1px solid var(--card-border);
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            transition: all 0.2s ease;
+        }
+
+        .supplier-card:hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+            border-color: var(--primary);
+        }
+
+        .supplier-card.disabled {
+            background-color: #f8fafc;
+            opacity: 0.7;
+            filter: grayscale(1);
+            border-style: dashed;
+        }
+
+        .card-actions {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+        }
+
+        .toggle-switch {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .opex-builder {
+            margin-top: 1.5rem;
+            border-top: 1px solid var(--card-border);
+            padding-top: 1rem;
+            background-color: #f8fafc;
+            padding: 1rem;
+            border-radius: 0.375rem;
+        }
+
+        .opex-list {
+            margin-top: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .opex-row {
+            display: grid;
+            grid-template-columns: 1.5fr 0.9fr 0.8fr 0.6fr auto;
+            gap: 0.25rem;
+            align-items: center;
+        }
+
+        .opex-row input,
+        .opex-row select {
+            padding: 0.4rem;
+            font-size: 0.8rem;
+            width: 100%;
+        }
+
+        .supplier-name-input {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--primary);
+            border: 1px solid transparent;
+            background: transparent;
+            width: 100%;
+            margin-bottom: 0.5rem;
+            padding: 0.25rem;
+            border-radius: 0.25rem;
+        }
+
+        .supplier-name-input:hover,
+        .supplier-name-input:focus {
+            border-color: var(--card-border);
+            background: #f8fafc;
+        }
+
+        .btn {
+            padding: 0.6rem 1.2rem;
+            border-radius: 0.375rem;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn.primary {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .btn.primary:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn.secondary {
+            background-color: white;
+            color: var(--secondary);
+            border: 1px solid #cbd5e1;
+        }
+
+        .btn.secondary:hover {
+            background-color: #f1f5f9;
+            color: var(--text-main);
+            border-color: var(--text-muted);
+        }
+
+        .btn-icon {
+            background: none;
+            border: none;
+            color: #64748b;
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 0.25rem;
+        }
+
+        .btn-icon:hover {
+            color: var(--danger);
+            background-color: #fee2e2;
+        }
+
+        .add-opex-btn {
+            width: 100%;
+            margin-top: 0.75rem;
+        }
+
+        .glass-table-container {
+            background: white;
+            border: 1px solid var(--card-border);
+            border-radius: 0.5rem;
+            overflow: auto;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--card-border);
+            font-size: 0.95rem;
+        }
+
+        th {
+            background-color: #f8fafc;
+            color: var(--text-main);
+            font-weight: 700;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        tr:hover {
+            background-color: #f1f5f9;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .chart-card {
+            padding: 1.5rem;
+            height: 500px;
+            background: white;
+            border: 1px solid var(--card-border);
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .chart-card h3 {
+            margin-bottom: 1rem;
+            color: var(--text-main);
+            font-size: 1.1rem;
+            font-weight: 700;
+            text-align: center;
+            border-bottom: 1px solid var(--background);
+            padding-bottom: 0.75rem;
+        }
+
+        .chart-container {
+            height: 400px;
+            position: relative;
+            width: 100%;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid var(--card-border);
+            padding-bottom: 0;
+        }
+
+        .tab-btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem 0.5rem 0 0;
+            border: 1px solid transparent;
+            background: transparent;
+            color: var(--text-muted);
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+        }
+
+        .tab-btn:hover {
+            color: var(--primary);
+            background-color: #f8fafc;
+        }
+
+        .tab-btn.active {
+            background: white;
+            color: var(--primary);
+            border: 1px solid var(--card-border);
+            border-bottom: 2px solid white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        footer {
+            margin-top: 4rem;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            padding-bottom: 2rem;
+        }
+
+        @media print {
+            body {
+                background: white;
+            }
+
+            .glass-container {
+                padding: 0;
+                max-width: 100%;
+            }
+
+            .tabs,
+            .add-opex-btn,
+            .remove-opex,
+            .card-actions,
+            .project-tabs,
+            .toggle-switch,
+            .selector-group,
+            #view-mode-toggle,
+            footer,
+            button {
+                display: none !important;
+            }
+
+            .card,
+            .supplier-card,
+            .chart-card {
+                box-shadow: none;
+                border: 1px solid #ccc;
+                break-inside: avoid;
+            }
+
+            .chart-card {
+                page-break-after: always;
+                height: 350px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .opex-row {
+                grid-template-columns: 1fr;
+            }
+
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .project-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--card-border);
+            padding-bottom: 0.5rem;
+        }
+
+        .project-tab-btn {
+            background: transparent;
+            border: none;
+            padding: 0.4rem 0.8rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-radius: 0.25rem;
+            transition: all 0.2s;
+        }
+
+        .project-tab-btn:hover {
+            background: #f1f5f9;
+            color: var(--primary);
+        }
+
+        .project-tab-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .project-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .project-content.active {
+            display: block;
+        }
+
+        .overview-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+        }
+
+        .stat-box {
+            background: #f8fafc;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--card-border);
+            text-align: center;
+        }
+
+        .stat-box h4 {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-box .val {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="glass-container">
+        <header>
+            <h1>LCOE & PPA Calculator</h1>
+            <p>Investment Analysis Tool for EPC & Investors</p>
+        </header>
+
+        <div id="main-nav" class="tabs no-print">
+            <button class="tab-btn active" onclick="app.switchTab('input-tab', this)">
+                <i data-lucide="edit-3"></i> กรอกข้อมูล (Input)
+            </button>
+            <button class="tab-btn" onclick="app.switchTab('results-tab', this)">
+                <i data-lucide="bar-chart-3"></i> ผลลัพธ์ (Results)
+            </button>
+            <button class="tab-btn" onclick="app.switchTab('payback-tab', this)">
+                <i data-lucide="refresh-cw"></i> คืนทุน (Payback)
+            </button>
+            <div style="margin-left:auto; display:flex; gap:0.5rem; align-items:center;">
+                <button class="btn secondary" onclick="app.exportData()"
+                    style="padding:0.4rem 0.8rem; font-size:0.85rem;">
+                    <i data-lucide="save"></i> Save File
+                </button>
+                <button class="btn secondary" onclick="document.getElementById('import-file').click()"
+                    style="padding:0.4rem 0.8rem; font-size:0.85rem;">
+                    <i data-lucide="upload"></i> Open File
+                </button>
+                <input type="file" id="import-file" style="display:none" onchange="app.importData(this)">
+            </div>
+        </div>
+
+        <main>
+            <div id="input-tab" class="tab-content active">
+                <section id="global-settings" class="card">
+                    <div class="card-header">
+                        <i data-lucide="settings"></i>
+                        <h2>Global Settings (ค่ากำหนดพื้นฐาน)</h2>
+                    </div>
+                    <div class="grid-inputs">
+                        <div class="input-group">
+                            <label>ระยะเวลาสัญญา (ปี)</label>
+                            <input type="number" id="project-period" min="10" max="25">
+                        </div>
+                        <div class="input-group">
+                            <label>WACC / Discount Rate (%)</label>
+                            <input type="number" id="wacc" step="0.1">
+                        </div>
+                        <div class="input-group">
+                            <label>Utility Tariff (THB/kWh)</label>
+                            <input type="number" id="utility-tariff" step="0.01">
+                        </div>
+                        <div class="input-group">
+                            <label>Degradation (% / year)</label>
+                            <input type="number" id="degradation" step="0.05">
+                        </div>
+                        <div class="input-group">
+                            <label>Tariff Escalation (% / year)</label>
+                            <input type="number" id="tariff-escalation" step="0.1">
+                        </div>
+                        <div class="input-group">
+                            <label>OPEX Inflation (% / year)</label>
+                            <input type="number" id="opex-inflation" step="0.1">
+                        </div>
+                        <div class="input-group highlight">
+                            <label>PPA Price Year 1 (THB)</label>
+                            <div id="ppa-price-y1-display" class="highlight-val">4.05</div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="supplier-section">
+                    <div class="section-header">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <h2>Supplier Comparison</h2>
+                            <button class="btn secondary" onclick="app.resetDefaults()" style="font-size:0.8rem;">Reset
+                                Data</button>
+                        </div>
+                        <p>กำหนดข้อมูลทางเทคนิคและค่าดำเนินงานของแต่ละราย (คลิก Active เพื่อเปิด/ปิด)</p>
+                    </div>
+                    <div id="supplier-container" class="supplier-grid"></div>
+                </section>
+            </div>
+
+            <div id="results-tab" class="tab-content">
+                <div class="section-header" style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <h2>Solor Investment Report</h2>
+                        <p>รายงานผลการวิเคราะห์ทางการเงินและเปรียบเทียบ Supplier</p>
+                    </div>
+                    <button class="btn primary no-print" onclick="window.print()"><i data-lucide="printer"></i> Print
+                        Report (A4)</button>
+                </div>
+
+                <div class="results-container">
+                    <div class="card">
+                        <div class="card-header"><i data-lucide="table"></i>
+                            <h2>Result Summary</h2>
+                        </div>
+                        <div class="table-responsive glass-table-container">
+                            <table id="summary-table">
+                                <thead>
+                                    <tr id="summary-header-row">
+                                        <th>Metric</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="charts-grid">
+                        <div class="chart-card">
+                            <h3>Levelized Cost & Profit Margin Analysis</h3>
+                            <div class="chart-container"><canvas id="lcoeChart"></canvas></div>
+                        </div>
+                        <div class="chart-card">
+                            <h3>Power Generation - Solar Rooftop</h3>
+                            <div class="chart-container"><canvas id="genChart"></canvas></div>
+                        </div>
+                    </div>
+
+                    <div class="year-table-section card">
+                        <div class="card-header"><i data-lucide="calendar"></i>
+                            <h2>Yearly Cash Flow Details</h2>
+                        </div>
+                        <div class="selector-group no-print"
+                            style="margin-bottom:1rem; display:flex; gap:1rem; align-items:center;">
+                            <label>เลือกดู Supplier:</label>
+                            <select id="year-table-selector"></select>
+                            <button id="export-csv-btn" class="btn secondary"><i data-lucide="download"></i> Export
+                                CSV</button>
+                        </div>
+                        <div class="table-responsive glass-table-container">
+                            <table id="year-table">
+                                <thead>
+                                    <tr>
+                                        <th>Year</th>
+                                        <th>Energy (kWh)</th>
+                                        <th>Tariff (THB)</th>
+                                        <th>Revenue (THB)</th>
+                                        <th>OPEX (THB)</th>
+                                        <th>Net CF (THB)</th>
+                                        <th>Cumulative (M THB)</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="payback-tab" class="tab-content">
+                <div class="section-header">
+                    <h2>Cumulative Cash Flow Analysis</h2>
+                    <p>แสดงจุดคืนทุน (Breakeven) และกระแสเงินทุนสะสมรายปี</p>
+                </div>
+                <div class="card" style="margin: 0 auto; padding: 2rem;">
+                    <div class="chart-card" style="height: 550px; border:none; box-shadow:none;">
+                        <h3>Cumulative Cash Flow Analysis (Payback Years)</h3>
+                        <div class="chart-container" style="height: 480px;"><canvas id="paybackChart"></canvas></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        <footer>
+            <p>&copy; 2026 EPC/Investor Tool (Classic Edition) - Version 2.10 (Portable)</p>
+        </footer>
+    </div>
+
+    <script>
+        /**
+         * LCOE & PPA Calculator Core Engine
+         * Multi-Project Edition
+         */
+
+        class SolarCalculator {
+            constructor() {
+                if (typeof Chart !== 'undefined' && typeof ChartDataLabels !== 'undefined') {
+                    Chart.register(ChartDataLabels);
+                }
+
+                // Configuration
+                this.VIEW_MODES = { OVERVIEW: 'overview', BREAKDOWN: 'breakdown' };
+                this.currentViewMode = this.VIEW_MODES.OVERVIEW;
+
+                this.ProjectCount = 3;
+
+                // Load Defaults from Config
+                const config = window.SolarConfig || { global: {}, suppliers: [] };
+
+                this.defaultGlobal = config.global || {
+                    period: 20, wacc: 6.0, utilityTariff: 4.5,
+                    ppaDiscount: 10.0, degradation: 0.5, tariffEscalation: 2.0, opexInflation: 2.0
+                };
+
+                this.defaultSuppliers = config.suppliers || [];
+
+                this.suppliers = JSON.parse(JSON.stringify(this.defaultSuppliers));
+                this.global = JSON.parse(JSON.stringify(this.defaultGlobal));
+                this.charts = {};
+
+                this.init();
+            }
+
+
+            init() {
+                this.loadInputs();
+                this.renderSuppliers();
+                this.renderViewControls();
+                this.calculateAndRender();
+                this.attachGlobalListeners();
+                if (window.lucide) lucide.createIcons();
+            }
+
+            // --- Persistence & Migration ---
+
+            loadInputs() {
+                // Persistence Disabled (v2.9 requirement: Stateless Mode)
+                // We no longer load from localStorage. Using defaults initialized in constructor.
+
+                // Sync inputs (Populate DOM with current in-memory defaults)
+                const setVal = (id, val) => {
+                    const el = document.getElementById(id);
+                    if (el) el.value = val;
+                };
+                Object.keys(this.global).forEach(k => {
+                    const id = this.getGlobalInputId(k);
+                    if (id) setVal(id, this.global[k]);
+                });
+            }
+
+            getGlobalInputId(key) {
+                const map = {
+                    period: 'project-period', wacc: 'wacc', utilityTariff: 'utility-tariff',
+                    ppaDiscount: 'ppa-discount', degradation: 'degradation',
+                    tariffEscalation: 'tariff-escalation', opexInflation: 'opex-inflation'
+                };
+                return map[key];
+            }
+
+            saveInputs() {
+                // Persistence Disabled (v2.9 requirement)
+                // console.log("Auto-save disabled in v2.9");
+            }
+
+            exportData() {
+                const data = {
+                    version: "2.0",
+                    savedAt: new Date().toISOString(),
+                    global: this.global,
+                    suppliers: this.suppliers
+                };
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `solar_calc_data_${new Date().toISOString().slice(0, 10)}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            importData(input) {
+                const file = input.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        if (!data.global || !data.suppliers) throw new Error("Invalid file format");
+
+                        if (confirm("Importing this file will overwrite your current data. Continue?")) {
+                            this.global = data.global;
+                            this.suppliers = data.suppliers;
+                            this.saveInputs(); // Save to local storage
+                            this.calculateAndRender();
+                            this.renderSuppliers(); // Refresh UI
+                            this.loadInputs(); // Re-populate global inputs DOM
+                            alert("Data loaded successfully!");
+                        }
+                    } catch (err) {
+                        alert("Error importing file: " + err.message);
+                    }
+                    // Reset input so same file can be selected again if needed
+                    input.value = '';
+                };
+                reader.readAsText(file);
+            }
+
+            resetDefaults() {
+                if (confirm('Reset all data? This cannot be undone.')) {
+                    localStorage.clear();
+                    location.reload();
+                }
+            }
+
+            // --- Core Logic ---
+
+            // Calculate a SINGLE Project
+            calculateProject(project) {
+                if (!project.enabled) return null;
+
+                const results = {
+                    yearlyData: [],
+                    pvEnergy: 0,
+                    pvOpex: 0, // PV of OPEX
+                    pvRevenue: 0,
+                    cashflows: [-project.capex],
+                    totalCapex: project.capex,
+                    totalRevenue: 0,
+                    totalOpexNominal: 0
+                };
+
+                const e1 = project.kwp * project.prodHour * 365;
+                const sellY1 = this.global.utilityTariff * (1 - (project.ppaDiscount / 100));
+
+                const r = this.global.wacc / 100;
+                const deg = this.global.degradation / 100;
+                const esc = this.global.tariffEscalation / 100;
+                const inf = this.global.opexInflation / 100;
+
+                for (let t = 1; t <= this.global.period; t++) {
+                    const df = 1 / Math.pow(1 + r, t);
+
+                    // Energy
+                    const annualEnergy = e1 * Math.pow(1 - deg, t - 1);
+                    results.pvEnergy += annualEnergy * df;
+
+                    // OPEX
+                    let annualOpex = 0;
+                    project.opex.forEach(item => {
+                        let val = 0;
+                        if (item.type === 'per_kwp') val = item.unit * project.kwp * (item.freq || 1);
+                        else if (item.type === 'flat') val = item.unit;
+                        else if (item.type === 'per_kwh') val = item.unit * annualEnergy;
+                        annualOpex += val * Math.pow(1 + inf, t - 1);
+                    });
+                    results.pvOpex += annualOpex * df;
+                    results.totalOpexNominal += annualOpex;
+
+                    // Revenue
+                    const currentTariff = sellY1 * Math.pow(1 + esc, t - 1);
+                    const annualRevenue = annualEnergy * currentTariff;
+                    results.pvRevenue += annualRevenue * df;
+                    results.totalRevenue += annualRevenue;
+
+                    const netCF = annualRevenue - annualOpex;
+                    results.cashflows.push(netCF);
+
+                    results.yearlyData.push({
+                        year: t,
+                        energy: annualEnergy,
+                        tariff: currentTariff,
+                        revenue: annualRevenue,
+                        opex: annualOpex,
+                        netCF: netCF,
+                        pvNetCF: netCF * df
+                    });
+                }
+
+                // Calculate Cumulative for Project
+                let cumulative = results.cashflows[0]; // Year 0 (Capex)
+                results.yearlyData.forEach(d => {
+                    cumulative += d.netCF;
+                    d.cumulativeCF = cumulative;
+                });
+
+                return results;
+            }
+
+            // Aggregate Projects for a Supplier
+            calculateSupplier(supplier) {
+                if (!supplier.enabled) return null;
+
+                const projResults = supplier.projects.map(p => this.calculateProject(p));
+                const activeProjResults = projResults.filter(r => r !== null);
+
+                if (activeProjResults.length === 0) return null; // No active projects
+
+                // Aggregate Defaults
+                const agg = {
+                    name: supplier.name,
+                    totalKwp: 0,
+                    totalCapex: 0,
+                    pvEnergy: 0,
+                    pvOpex: 0,
+                    pvRevenue: 0,
+                    cashflows: new Array(this.global.period + 1).fill(0),
+                    yearlyData: new Array(this.global.period).fill(null).map((_, i) => ({
+                        year: i + 1, energy: 0, revenue: 0, opex: 0, netCF: 0, cumulativeCF: 0
+                    }))
+                };
+
+                // Summation
+                activeProjResults.forEach(r => {
+                    agg.totalCapex += r.totalCapex;
+                    agg.pvEnergy += r.pvEnergy;
+                    agg.pvOpex += r.pvOpex;
+                    agg.pvRevenue += r.pvRevenue;
+
+                    r.cashflows.forEach((cf, t) => agg.cashflows[t] += cf);
+
+                    r.yearlyData.forEach((yd, i) => {
+                        agg.yearlyData[i].energy += yd.energy;
+                        agg.yearlyData[i].revenue += yd.revenue;
+                        agg.yearlyData[i].opex += yd.opex;
+                        agg.yearlyData[i].netCF += yd.netCF;
+                        agg.yearlyData[i].tariff = yd.tariff; // Same for all
+                    });
+                });
+
+                // Add kWp
+                supplier.projects.forEach(p => { if (p.enabled) agg.totalKwp += p.kwp; });
+
+                // Calculate Metrics based on Aggregates
+                let cumulative = 0;
+                let paybackFound = false;
+                agg.payback = this.global.period + 1;
+
+                agg.yearlyData.forEach((d, i) => {
+                    // Year 0 is cashflows[0]
+                    if (i === 0) cumulative += agg.cashflows[0];
+
+                    const prev = cumulative;
+                    cumulative += d.netCF;
+                    d.cumulativeCF = cumulative;
+
+                    if (!paybackFound && cumulative >= 0) {
+                        const fraction = Math.abs(prev) / d.netCF;
+                        agg.payback = (d.year - 1) + fraction;
+                        paybackFound = true;
+                    }
+                });
+
+                if (agg.pvEnergy > 0) {
+                    agg.lcoeCapex = agg.totalCapex / agg.pvEnergy;
+                    agg.lcoeOpex = agg.pvOpex / agg.pvEnergy;
+                    agg.lcoe = agg.lcoeCapex + agg.lcoeOpex;
+                    agg.avgTariff = agg.pvRevenue / agg.pvEnergy;
+                    agg.profitMargin = agg.avgTariff - agg.lcoe;
+                }
+
+                agg.irr = this.calculateIRR(agg.cashflows);
+                agg.npv = agg.pvRevenue - (agg.totalCapex + agg.pvOpex);
+                agg.roi = this.calculateROI(agg.totalRevenue, agg.totalOpexNominal, agg.totalCapex);
+                agg.mirr = this.calculateMIRR(agg.cashflows);
+
+                // Attach Project Results for Breakdown View
+                agg.projects = projResults.map((r, i) => {
+                    if (!r) return null;
+                    // Calclulate LCOE for individual project
+                    if (r.pvEnergy > 0) {
+                        r.lcoeCapex = r.totalCapex / r.pvEnergy;
+                        r.lcoeOpex = r.pvOpex / r.pvEnergy;
+                        r.lcoe = r.lcoeCapex + r.lcoeOpex;
+                        r.avgTariff = r.totalRevenue / r.pvEnergy; // roughly same
+                        r.profitMargin = r.avgTariff - r.lcoe;
+                    }
+                    r.irr = this.calculateIRR(r.cashflows); // Add per-project IRR
+                    r.npv = r.pvRevenue - (r.totalCapex + r.pvOpex);
+                    r.roi = this.calculateROI(r.totalRevenue, r.totalOpexNominal, r.totalCapex);
+                    r.mirr = this.calculateMIRR(r.cashflows);
+
+                    return { ...r, meta: supplier.projects[i] };
+                });
+
+                return agg;
+            }
+
+            calculateROI(totalRevenue, totalOpex, totalCapex) {
+                // Simple ROI: (Net Profit / Investment) * 100
+                // Net Profit = Total Lifetime Revenue - Total Lifetime Opex - Capex
+                const netProfit = totalRevenue - totalOpex - totalCapex;
+                if (totalCapex === 0) return 0;
+                return (netProfit / totalCapex) * 100;
+            }
+
+            calculateMIRR(cashflows) {
+                // MIRR = (FV(pos) / PV(neg))^(1/n) - 1
+                // Rate = WACC
+                const r = this.global.wacc / 100;
+                const n = this.global.period;
+
+                let fvPos = 0;
+                let pvNeg = 0;
+
+                cashflows.forEach((cf, t) => {
+                    if (cf >= 0) {
+                        // Future Value of positive cashflows at end of period
+                        fvPos += cf * Math.pow(1 + r, n - t);
+                    } else {
+                        // Present Value of negative cashflows at start
+                        pvNeg += Math.abs(cf) / Math.pow(1 + r, t);
+                    }
+                });
+
+                if (pvNeg === 0) return 0;
+                return (Math.pow(fvPos / pvNeg, 1 / n) - 1) * 100;
+            }
+
+            calculateIRR(cashflows) {
+                let guess = 0.1;
+                for (let i = 0; i < 100; i++) {
+                    let npv = 0, dnpv = 0;
+                    for (let t = 0; t < cashflows.length; t++) {
+                        const f = Math.pow(1 + guess, t);
+                        npv += cashflows[t] / f;
+                        dnpv -= t * cashflows[t] / (f * (1 + guess));
+                    }
+                    if (Math.abs(dnpv) < 1e-6) break;
+                    let val = guess - npv / dnpv;
+                    if (Math.abs(val - guess) < 1e-5) return val * 100;
+                    guess = val;
+                }
+                return 0;
+            }
+
+            updateConfig(key, val) {
+                this.global[key] = parseFloat(val);
+                this.saveInputs();
+                this.calculateAndRender();
+
+                // Update display
+                const ppaY1 = this.global.utilityTariff * (1 - (this.global.ppaDiscount / 100));
+                const el = document.getElementById('ppa-price-y1-display');
+                if (el) el.textContent = ppaY1.toFixed(2);
+            }
+
+            // --- UI Rendering ---
+
+            renderViewControls() {
+                // Add toggle to Results Tab
+                this.renderToggle('#results-tab .section-header div', 'view-toggle-results');
+                // Removed Payback Toggle from here as controls will be on the chart itself
+            }
+
+            renderToggle(selector, id) {
+                const container = document.querySelector(selector);
+                if (container && !document.getElementById(id)) {
+                    const div = document.createElement('div');
+                    div.id = id;
+                    div.className = 'view-mode-toggle-group';
+                    div.style.marginTop = '1rem';
+                    div.innerHTML = `
+                        <div class="tabs" style="margin:0; justify-content:flex-start;">
+                            <button class="tab-btn ${this.currentViewMode === 'overview' ? 'active' : ''}" onclick="app.setViewMode('overview')">Overview</button>
+                            <button class="tab-btn ${this.currentViewMode === 'breakdown' ? 'active' : ''}" onclick="app.setViewMode('breakdown')">Project Breakdown</button>
+                        </div>
+                    `;
+                    container.appendChild(div);
+                }
+            }
+
+            setViewMode(mode) {
+                this.currentViewMode = mode;
+                // Update all view toggles
+                document.querySelectorAll('.view-mode-toggle-group .tab-btn').forEach(b => {
+                    if (b.textContent.toLowerCase().includes(mode)) b.classList.add('active');
+                    else b.classList.remove('active');
+                });
+                this.renderCharts();
+                this.renderSummaryTable();
+            }
+
+            renderSuppliers() {
+                const container = document.getElementById('supplier-container');
+                if (!container) return;
+                container.innerHTML = '';
+
+                this.suppliers.forEach((s, sIdx) => {
+                    const card = document.createElement('div');
+                    card.className = `supplier-card ${s.enabled ? '' : 'disabled'}`;
+
+                    // Header
+                    let html = `
+                <div class="card-actions">
+                    <label class="toggle-switch">
+                        <input type="checkbox" ${s.enabled ? 'checked' : ''} onchange="app.toggleSupplier(${sIdx})">
+                        <span>Active</span>
+                    </label>
+                </div>
+                <input type="text" class="supplier-name-input" value="${s.name}" onchange="app.updateSupplierName(${sIdx}, this.value)" placeholder="Supplier Name">
+            `;
+
+                    // Tabs
+                    html += `<div class="project-tabs">`;
+                    html += `<button class="project-tab-btn ${s.activeTab === 0 ? 'active' : ''}" onclick="app.switchProjectTab(${sIdx}, 0)">Overview</button>`;
+                    s.projects.forEach((p, pIdx) => {
+                        html += `<button class="project-tab-btn ${s.activeTab === (pIdx + 1) ? 'active' : ''}" onclick="app.switchProjectTab(${sIdx}, ${pIdx + 1})">Proj ${pIdx + 1}</button>`;
+                    });
+                    html += `</div>`;
+
+                    // Overview Content (Read Only)
+                    const agg = this.results ? this.results[sIdx] : null;
+                    html += `
+                <div class="project-content ${s.activeTab === 0 ? 'active' : ''}">
+                    <div class="overview-stats">
+                        <div class="stat-box"><h4>Total kWp</h4><div class="val">${agg ? agg.totalKwp.toLocaleString() : '-'}</div></div>
+                        <div class="stat-box"><h4>Total CAPEX</h4><div class="val">${agg ? (agg.totalCapex / 1e6).toFixed(2) + 'M' : '-'}</div></div>
+                        <div class="stat-box"><h4>Avg LCOE</h4><div class="val">${agg ? agg.lcoe.toFixed(2) : '-'}</div></div>
+                        <div class="stat-box"><h4>IRR</h4><div class="val">${agg ? agg.irr.toFixed(2) + '%' : '-'}</div></div>
+                    </div>
+                    <p style="font-size:0.8rem; color:#64748b; text-align:center; margin-top:1rem;">Select a Project tab to edit details.</p>
+                </div>
+            `;
+
+                    // Project Contents
+                    s.projects.forEach((p, pIdx) => {
+                        const isActive = s.activeTab === (pIdx + 1);
+                        html += `
+                    <div class="project-content ${isActive ? 'active' : ''}">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
+                            <input type="text" value="${p.name}" onchange="app.updateProject(${sIdx}, ${pIdx}, 'name', this.value)" 
+                                   style="font-weight:600; font-size:0.9rem; width:60%; border:1px solid #e2e8f0; padding:0.2rem;">
+                            <label><input type="checkbox" ${p.enabled ? 'checked' : ''} onchange="app.toggleProject(${sIdx}, ${pIdx})"> Enable</label>
+                        </div>
+
+                        ${!p.enabled ? '<p style="color:red; font-size:0.8rem;">Project Disabled</p>' : ''}
+                        
+                        <div class="input-group">
+                            <label>kWp</label>
+                            <input type="number" value="${p.kwp}" onchange="app.updateProject(${sIdx}, ${pIdx}, 'kwp', this.value)">
+                        </div>
+                        <div class="input-group">
+                            <label>Prod Hour</label>
+                            <input type="number" step="0.01" value="${p.prodHour}" onchange="app.updateProject(${sIdx}, ${pIdx}, 'prodHour', this.value)">
+                        </div>
+                        <div class="input-group">
+                            <label>CAPEX</label>
+                            <input type="number" value="${p.capex}" onchange="app.updateProject(${sIdx}, ${pIdx}, 'capex', this.value)">
+                        </div>
+                        <div class="input-group">
+                            <label>Discount (%)</label>
+                            <input type="number" step="0.1" value="${p.ppaDiscount}" onchange="app.updateProject(${sIdx}, ${pIdx}, 'ppaDiscount', this.value)">
+                        </div>
+
+                        <div class="opex-builder">
+                            <label style="font-size:0.85rem; font-weight:600; color:#475569;">OPEX</label>
+                            <div class="opex-list" id="opex-list-${sIdx}-${pIdx}"></div>
+                            <button class="btn secondary add-opex-btn" onclick="app.addOpexItem(${sIdx}, ${pIdx})">
+                                <i data-lucide="plus"></i> เพิ่มรายการ
+                            </button>
+                        </div>
+                    </div>
+                `;
+                    });
+
+                    card.innerHTML = html;
+                    container.appendChild(card);
+
+                    // Render OPEX for each project
+                    s.projects.forEach((p, pIdx) => {
+                        this.renderOpexItems(sIdx, pIdx);
+                    });
+                });
+                if (window.lucide) lucide.createIcons();
+            }
+
+            renderOpexItems(sIdx, pIdx) {
+                const container = document.getElementById(`opex-list-${sIdx}-${pIdx}`);
+                if (!container) return;
+                container.innerHTML = '';
+
+                this.suppliers[sIdx].projects[pIdx].opex.forEach((item, oIdx) => {
+                    const row = document.createElement('div');
+                    row.className = 'opex-row';
+                    row.innerHTML = `
+                <input type="text" value="${item.name}" class="opex-name">
+                <select class="opex-type">
+                    <option value="per_kwp" ${item.type == 'per_kwp' ? 'selected' : ''}>/kWp</option>
+                    <option value="flat" ${item.type == 'flat' ? 'selected' : ''}>Flat</option>
+                    <option value="per_kwh" ${item.type == 'per_kwh' ? 'selected' : ''}>/kWh</option>
+                </select>
+                <input type="number" value="${item.unit}" class="opex-unit">
+                <input type="number" value="${item.freq || 1}" class="opex-freq">
+                <button class="btn-icon remove"><i data-lucide="trash-2"></i></button>
+             `;
+
+                    // Bind events
+                    row.querySelector('.opex-name').onchange = (e) => this.updateOpex(sIdx, pIdx, oIdx, 'name', e.target.value);
+                    row.querySelector('.opex-type').onchange = (e) => this.updateOpex(sIdx, pIdx, oIdx, 'type', e.target.value);
+                    row.querySelector('.opex-unit').onchange = (e) => this.updateOpex(sIdx, pIdx, oIdx, 'unit', parseFloat(e.target.value));
+                    row.querySelector('.opex-freq').onchange = (e) => this.updateOpex(sIdx, pIdx, oIdx, 'freq', parseFloat(e.target.value));
+                    row.querySelector('.remove').onclick = () => {
+                        this.suppliers[sIdx].projects[pIdx].opex.splice(oIdx, 1);
+                        this.saveInputs();
+                        this.renderOpexItems(sIdx, pIdx);
+                        this.calculateAndRender();
+                    };
+
+                    container.appendChild(row);
+                });
+                if (window.lucide) lucide.createIcons();
+            }
+
+            switchProjectTab(sIdx, tabIdx) {
+                this.suppliers[sIdx].activeTab = tabIdx;
+                this.renderSuppliers(); // Re-render to update UI state
+            }
+
+            // --- Updates ---
+
+            toggleSupplier(idx) {
+                this.suppliers[idx].enabled = !this.suppliers[idx].enabled;
+                this.saveInputs();
+                this.calculateAndRender();
+                this.renderSuppliers(); // Re-render to show disabled state
+            }
+
+            updateSupplierName(idx, val) {
+                this.suppliers[idx].name = val;
+                this.saveInputs();
+                this.calculateAndRender();
+            }
+
+            toggleProject(sIdx, pIdx) {
+                this.suppliers[sIdx].projects[pIdx].enabled = !this.suppliers[sIdx].projects[pIdx].enabled;
+                this.saveInputs();
+                this.calculateAndRender();
+                this.renderSuppliers(); // Re-render for error msg
+            }
+
+            updateProject(sIdx, pIdx, key, val) {
+                if (key !== 'name') val = parseFloat(val);
+                this.suppliers[sIdx].projects[pIdx][key] = val;
+                this.saveInputs();
+                this.calculateAndRender();
+                if (key === 'capex' || key === 'kwp') this.renderSuppliers(); // Update overview stats
+            }
+
+            updateOpex(sIdx, pIdx, oIdx, key, val) {
+                this.suppliers[sIdx].projects[pIdx].opex[oIdx][key] = val;
+                this.saveInputs();
+                this.calculateAndRender();
+            }
+
+            addOpexItem(sIdx, pIdx) {
+                this.suppliers[sIdx].projects[pIdx].opex.push({ name: "Cost", type: "per_kwp", unit: 0, freq: 1 });
+                this.saveInputs();
+                this.renderOpexItems(sIdx, pIdx);
+                this.calculateAndRender();
+            }
+
+            calculateAndRender() {
+                this.results = this.suppliers.map(s => this.calculateSupplier(s));
+                this.renderSummaryTable();
+                this.renderCharts();
+                this.renderYearTableSelector();
+                this.renderYearTable();
+            }
+
+            attachGlobalListeners() {
+                // Global Inputs
+                ['project-period', 'wacc', 'utility-tariff', 'ppa-discount', 'degradation', 'tariff-escalation', 'opex-inflation'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.onchange = (e) => {
+                            const map = { 'project-period': 'period', 'utility-tariff': 'utilityTariff', 'ppa-discount': 'ppaDiscount', 'tariff-escalation': 'tariffEscalation', 'opex-inflation': 'opexInflation' };
+                            this.updateConfig(map[id] || id, e.target.value);
+                        };
+                    }
+                });
+                const yearTableSelector = document.getElementById('year-table-selector');
+                if (yearTableSelector) {
+                    yearTableSelector.onchange = () => this.renderYearTable();
+                }
+                const exportCsvBtn = document.getElementById('export-csv-btn');
+                if (exportCsvBtn) {
+                    exportCsvBtn.onclick = () => this.exportCSV();
+                }
+            }
+
+            switchTab(id, btn) {
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                // Only target main nav buttons to avoid conflict with sub-tabs
+                document.querySelectorAll('#main-nav .tab-btn').forEach(b => b.classList.remove('active'));
+
+                document.getElementById(id).classList.add('active');
+                if (btn) btn.classList.add('active');
+
+                if (id === 'results-tab' || id === 'payback-tab') this.renderCharts();
+            }
+
+            // --- Result Rendering ---
+
+            renderSummaryTable() {
+                const head = document.getElementById('summary-header-row');
+                const tbody = document.querySelector('#summary-table tbody');
+                if (!head || !tbody) return;
+
+                head.innerHTML = '<th>Metric</th>';
+                tbody.innerHTML = '';
+
+                const activeS = this.suppliers.filter(s => s.enabled);
+
+                let cols = [];
+                if (this.currentViewMode === this.VIEW_MODES.OVERVIEW) {
+                    cols = activeS.map((s, i) => ({ label: s.name, res: this.results ? this.results[this.suppliers.indexOf(s)] : null }));
+                } else {
+                    // Breakdown: Add col for each project
+                    activeS.forEach(s => {
+                        const res = this.results[this.suppliers.indexOf(s)];
+                        if (res) {
+                            res.projects.forEach((pres, pIdx) => {
+                                if (pres) cols.push({ label: `${s.name} (${pres.meta.name})`, res: pres });
+                            });
+                        }
+                    });
+                }
+
+                cols.forEach(c => head.innerHTML += `<th>${c.label}</th>`);
+
+                const metrics = [
+                    { label: 'LCOE (THB/kWh)', key: 'lcoe', fmt: v => v.toFixed(2) },
+                    { label: 'Avg Tariff (THB)', key: 'avgTariff', fmt: v => v.toFixed(2) },
+                    { label: 'Profit Margin', key: 'profitMargin', fmt: v => `<span style="color:${v >= 0 ? 'green' : 'red'}">${v.toFixed(2)}</span>` },
+                    { label: 'Payback (Yrs)', key: 'payback', fmt: v => v > this.global.period ? '> ' + this.global.period : v.toFixed(1) },
+                    { label: 'IRR (%)', key: 'irr', fmt: v => v.toFixed(2) + '%' },
+                    { label: 'NPV (M THB)', key: 'npv', fmt: v => (v / 1e6).toFixed(2) },
+                    { label: 'ROI (%)', key: 'roi', fmt: v => v.toFixed(2) + '%' },
+                    { label: 'MIRR (%)', key: 'mirr', fmt: v => v.toFixed(2) + '%' }
+                ];
+
+                metrics.forEach(m => {
+                    let row = `<tr><td>${m.label}</td>`;
+                    cols.forEach(c => {
+                        row += `<td>${c.res ? m.fmt(c.res[m.key] || 0) : '-'}</td>`;
+                    });
+                    row += '</tr>';
+                    tbody.innerHTML += row;
+                });
+            }
+
+            renderCharts() {
+                if (typeof Chart === 'undefined') return;
+
+                // Prepare Data based on Mode
+                const activeS = this.suppliers.filter(s => s.enabled);
+                let labels = [];
+                let dataR = [];
+
+                if (this.currentViewMode === this.VIEW_MODES.OVERVIEW) {
+                    activeS.forEach(s => {
+                        labels.push(s.name);
+                        dataR.push(this.results[this.suppliers.indexOf(s)]);
+                    });
+                } else {
+                    activeS.forEach(s => {
+                        const res = this.results[this.suppliers.indexOf(s)];
+                        if (res) {
+                            res.projects.forEach((pRes, pIdx) => {
+                                if (pRes) {
+                                    labels.push(`${s.name} - ${pRes.meta.name}`);
+                                    dataR.push(pRes);
+                                }
+                            });
+                        }
+                    });
+                }
+
+                // Filter out nulls (safeguard)
+                // ... (Chart config similar to before but utilizing dataR array)
+
+                Chart.defaults.font.size = 14;
+                const common = {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' }, tooltip: { displayColors: true } }
+                };
+
+                // 1. LCOE
+                const lcoeCanvas = document.getElementById('lcoeChart');
+                if (lcoeCanvas) {
+                    if (this.charts.lcoe) this.charts.lcoe.destroy();
+                    this.charts.lcoe = new Chart(lcoeCanvas, {
+                        type: 'bar',
+                        data: {
+                            labels,
+                            datasets: [
+                                { label: 'Capex', data: dataR.map(r => r ? r.lcoeCapex : 0), backgroundColor: '#ef4444', stack: '0' },
+                                { label: 'Opex', data: dataR.map(r => r ? r.lcoeOpex : 0), backgroundColor: '#facc15', stack: '0' },
+                                { label: 'Profit', data: dataR.map(r => r ? r.profitMargin : 0), backgroundColor: '#22c55e', stack: '0' }
+                            ]
+                        },
+                        options: {
+                            ...common,
+                            scales: { x: { stacked: true }, y: { stacked: true, title: { display: true, text: 'THB/kWh' } } },
+                            plugins: {
+                                datalabels: {
+                                    display: true,
+                                    font: { size: 10, weight: 'bold' },
+                                    formatter: (v, ctx) => {
+                                        if (ctx.datasetIndex === 2) { // Profit Top
+                                            const total = dataR[ctx.dataIndex] ? dataR[ctx.dataIndex].avgTariff : 0;
+                                            return `T: ${total.toFixed(2)}\nP: ${v.toFixed(2)}`;
+                                        }
+                                        return v > 0.1 ? v.toFixed(2) : '';
+                                    },
+                                    anchor: (ctx) => ctx.datasetIndex === 2 ? 'end' : 'center',
+                                    align: (ctx) => ctx.datasetIndex === 2 ? 'top' : 'center',
+                                    offset: (ctx) => ctx.datasetIndex === 2 ? -5 : 0
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // 2. Gen
+                const genCanvas = document.getElementById('genChart');
+                if (genCanvas) {
+                    if (this.charts.gen) this.charts.gen.destroy();
+                    this.charts.gen = new Chart(genCanvas, {
+                        type: 'bar',
+                        data: {
+                            labels,
+                            datasets: [{
+                                label: 'Year 1 Generation (kWh)',
+                                data: dataR.map(r => r ? r.yearlyData[0].energy : 0),
+                                backgroundColor: '#3b82f6'
+                            }]
+                        },
+                        options: {
+                            ...common,
+                            plugins: {
+                                ...common.plugins,
+                                datalabels: {
+                                    display: true,
+                                    formatter: (value) => value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+                                    anchor: 'end',
+                                    align: 'top',
+                                    offset: -5,
+                                    font: { size: 10 }
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function (context) {
+                                            let label = context.dataset.label || '';
+                                            if (label) {
+                                                label += ': ';
+                                            }
+                                            if (context.parsed.y !== null) {
+                                                label += context.parsed.y.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                            }
+                                            return label;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // 3. Payback Chart
+                const paybackCanvas = document.getElementById('paybackChart');
+                if (paybackCanvas) {
+                    // Inject Selector if not exists
+                    const chartCard = paybackCanvas.closest('.chart-card');
+                    if (chartCard && !document.getElementById('payback-mode-selector')) {
+                        const header = chartCard.querySelector('h3');
+                        if (header) {
+                            const selContainer = document.createElement('div');
+                            selContainer.style.marginBottom = '10px';
+                            selContainer.innerHTML = `
+                                <label style="font-weight:normal; font-size:0.9rem; margin-right:8px;">Display Mode:</label>
+                                <select id="payback-mode-selector" style="padding:4px; border:1px solid #ccc; border-radius:4px;" onchange="app.renderCharts()">
+                                    <option value="overview">Overview (By Supplier)</option>
+                                    <option value="breakdown">Project Breakdown</option>
+                                </select>
+                            `;
+                            header.parentNode.insertBefore(selContainer, header.nextSibling);
+                        }
+                    }
+
+                    if (this.charts.payback) this.charts.payback.destroy();
+
+                    const modeSel = document.getElementById('payback-mode-selector');
+                    const paybackMode = modeSel ? modeSel.value : 'overview';
+
+                    const datasets = [];
+
+                    if (paybackMode === 'overview') {
+                        activeS.forEach((s, i) => {
+                            const res = this.results[this.suppliers.indexOf(s)];
+                            if (res) {
+                                datasets.push({
+                                    label: s.name,
+                                    data: res.yearlyData.map(d => d.cumulativeCF),
+                                    borderColor: this.getChartColor(i),
+                                    backgroundColor: this.getChartColor(i),
+                                    fill: false,
+                                    tension: 0.4
+                                });
+                            }
+                        });
+                    } else {
+                        // Breakdown
+                        activeS.forEach((s, sIdx) => {
+                            const res = this.results[this.suppliers.indexOf(s)];
+                            if (res) {
+                                res.projects.forEach((pRes, pIdx) => {
+                                    if (pRes) {
+                                        datasets.push({
+                                            label: `${s.name} - ${pRes.meta.name}`,
+                                            data: pRes.yearlyData.map(d => d.cumulativeCF),
+                                            borderColor: this.getChartColor(sIdx, pIdx),
+                                            backgroundColor: this.getChartColor(sIdx, pIdx),
+                                            fill: false,
+                                            tension: 0.4
+                                        });
+                                    }
+                                });
+                            }
+                        });
+                    }
+
+                    this.charts.payback = new Chart(paybackCanvas, {
+                        type: 'line',
+                        data: {
+                            labels: Array.from({ length: this.global.period }, (_, i) => `Yr ${i + 1}`),
+                            datasets: datasets
+                        },
+                        options: {
+                            ...common,
+                            plugins: {
+                                ...common.plugins,
+                                datalabels: {
+                                    display: 'auto',
+                                    formatter: (v) => (v / 1e6).toFixed(2) + ' M',
+                                    align: 'top',
+                                    anchor: 'end',
+                                    font: { size: 10 },
+                                    offset: 0
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function (context) {
+                                            let label = context.dataset.label || '';
+                                            if (label) {
+                                                label += ': ';
+                                            }
+                                            if (context.parsed.y !== null) {
+                                                label += (context.parsed.y / 1e6).toFixed(2) + ' M THB';
+                                            }
+                                            return label;
+                                        }
+                                    }
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    title: { display: true, text: 'Cumulative CF (M THB)' },
+                                    grid: {
+                                        color: (ctx) => ctx.tick.value === 0 ? '#000' : '#e5e7eb',
+                                        lineWidth: (ctx) => ctx.tick.value === 0 ? 2 : 1
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+
+            getChartColor(idx, subIdx = 0) {
+                const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+                return colors[(idx + subIdx) % colors.length];
+            }
+
+            renderYearTableSelector() {
+                const sel = document.getElementById('year-table-selector');
+                if (!sel) return;
+
+                // Save current selection if possible
+                const currentVal = sel.value;
+                sel.innerHTML = '';
+
+                this.suppliers.forEach((s, sIdx) => {
+                    if (s.enabled) {
+                        // Supplier Overview Option
+                        const opt = document.createElement('option');
+                        opt.value = `S${sIdx}`;
+                        opt.text = `${s.name} (Overview)`;
+                        sel.appendChild(opt);
+
+                        // Individual Project Options
+                        s.projects.forEach((p, pIdx) => {
+                            if (p.enabled) {
+                                const pOpt = document.createElement('option');
+                                pOpt.value = `S${sIdx}-P${pIdx}`;
+                                pOpt.text = `  └ ${s.name} - ${p.name}`;
+                                sel.appendChild(pOpt);
+                            }
+                        });
+                    }
+                });
+
+                // Restore selection if valid, otherwise default to first
+                if (currentVal && Array.from(sel.options).some(o => o.value === currentVal)) {
+                    sel.value = currentVal;
+                }
+            }
+
+            renderYearTable() {
+                const sel = document.getElementById('year-table-selector');
+                if (!sel || !sel.value) return;
+
+                const val = sel.value;
+                let res = null;
+
+                if (val.startsWith('S') && !val.includes('P')) {
+                    // Overview: S0
+                    const sIdx = parseInt(val.substring(1));
+                    res = this.results[sIdx];
+                } else if (val.includes('P')) {
+                    // Project: S0-P1
+                    const parts = val.split('-');
+                    const sIdx = parseInt(parts[0].substring(1));
+                    const pIdx = parseInt(parts[1].substring(1));
+                    res = this.results[sIdx] ? this.results[sIdx].projects[pIdx] : null;
+                }
+
+                const tbody = document.querySelector('#year-table tbody');
+                if (!tbody || !res) return;
+                tbody.innerHTML = '';
+
+                res.yearlyData.forEach(d => {
+                    tbody.innerHTML += `
+                <tr>
+                    <td>${d.year}</td>
+                    <td>${d.energy.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                    <td>${d.tariff.toFixed(2)}</td>
+                    <td>${d.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                    <td>${d.opex.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                    <td>${d.netCF.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                    <td>${(d.cumulativeCF / 1e6).toFixed(2)}M</td>
+                </tr>
+            `;
+                });
+            }
+            exportCSV() {
+                const sel = document.getElementById('year-table-selector');
+                if (!sel || !sel.value) return;
+
+                const val = sel.value;
+                let res = null;
+                let filename = 'solar_cashflow.csv';
+
+                if (val.startsWith('S') && !val.includes('P')) {
+                    const sIdx = parseInt(val.substring(1));
+                    res = this.results[sIdx];
+                    filename = `cashflow_${this.suppliers[sIdx].name.replace(/\s+/g, '_')}_overview.csv`;
+                } else if (val.includes('P')) {
+                    const parts = val.split('-');
+                    const sIdx = parseInt(parts[0].substring(1));
+                    const pIdx = parseInt(parts[1].substring(1));
+                    res = this.results[sIdx] ? this.results[sIdx].projects[pIdx] : null;
+                    if (res) filename = `cashflow_${this.suppliers[sIdx].name.replace(/\s+/g, '_')}_${res.meta.name.replace(/\s+/g, '_')}.csv`;
+                }
+
+                if (!res) {
+                    alert('No data to export');
+                    return;
+                }
+
+                // Generate CSV Content
+                const lines = ["Year,Energy (kWh),Tariff (THB),Revenue (THB),OPEX (THB),Net CF (THB),Cumulative (THB)"];
+                res.yearlyData.forEach(d => {
+                    lines.push(`${d.year},${d.energy},${d.tariff},${d.revenue},${d.opex},${d.netCF},${d.cumulativeCF}`);
+                });
+                const csv = lines.join('\n');
+
+                // Trigger Download
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement("a");
+                if (link.download !== undefined) {
+                    const url = URL.createObjectURL(blob);
+                    link.setAttribute("href", url);
+                    link.setAttribute("download", filename);
+                    link.style.visibility = 'hidden';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }
+            }
+            // This is a placeholder for the calculateProject function, as it was not present in the provided document.
+            // The cumulativeCF calculation logic would typically be placed here.
+            // For demonstration, assuming a structure like:
+            // calculateProject(projectData) {
+            //     let results = { cashflows: [projectData.capex], yearlyData: [] }; // Example structure
+            //     // ... other calculations ...
+            //
+            //     // Calculate Cumulative for Project
+            //     let cumulative = results.cashflows[0]; // Year 0 (Capex)
+            //     results.yearlyData.forEach(d => {
+            //         cumulative += d.netCF;
+            //         d.cumulativeCF = cumulative;
+            //     });
+            //
+            //     return results;
+            // }
+        }
+
+        try {
+            window.app = new SolarCalculator();
+            console.log('App initialized successfully (v2.10)');
+        } catch (err) {
+            console.error('Critical Error initializing app:', err);
+            alert('Critical Error: ' + err.message);
+        }
+    </script>
+</body>
+
+</html>
