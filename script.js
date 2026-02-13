@@ -662,6 +662,20 @@ class SolarCalculator {
         displayEl.textContent = ppaY1.toFixed(2);
     }
 
+    getProjectUtilityTariff(project) {
+        return Number.isFinite(project.utilityTariff) ? project.utilityTariff : this.global.utilityTariff;
+    }
+
+    updateProjectUtilityTariffDisplay(sIdx, pIdx) {
+        const project = this.suppliers[sIdx]?.projects[pIdx];
+        const displayEl = document.getElementById(`ppa-price-y1-display-${sIdx}-${pIdx}`);
+        if (!project || !displayEl) return;
+
+        const tariff = this.getProjectUtilityTariff(project);
+        const ppaY1 = tariff * (1 - (project.ppaDiscount / 100));
+        displayEl.textContent = ppaY1.toFixed(2);
+    }
+
     // --- UI Rendering ---
 
     renderViewControls() {
