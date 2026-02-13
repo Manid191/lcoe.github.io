@@ -69,10 +69,6 @@
                             <input type="number" id="wacc" step="0.1">
                         </div>
                         <div class="input-group">
-                            <label>Utility Tariff (THB/kWh)</label>
-                            <input type="number" id="utility-tariff" step="0.01">
-                        </div>
-                        <div class="input-group">
                             <label>Degradation (% / year)</label>
                             <input type="number" id="degradation" step="0.05">
                         </div>
@@ -83,10 +79,6 @@
                         <div class="input-group">
                             <label>OPEX Inflation (% / year)</label>
                             <input type="number" id="opex-inflation" step="0.1">
-                        </div>
-                        <div class="input-group highlight">
-                            <label>PPA Price Year 1 (THB)</label>
-                            <div id="ppa-price-y1-display" class="highlight-val">4.05</div>
                         </div>
                     </div>
                 </section>
@@ -118,12 +110,22 @@
                     <div class="results-container">
                         <div class="charts-grid">
                             <div class="chart-card">
-                                <h3>Levelized Cost & Profit Margin Analysis</h3>
+                                <div class="chart-title-row">
+                                    <h3>Levelized Cost & Profit Margin Analysis</h3>
+                                    <button class="btn secondary no-print chart-export-btn" onclick="app.exportChart('lcoe', 'lcoe_profit_chart.png')">
+                                        <i data-lucide="image-down"></i> Export PNG
+                                    </button>
+                                </div>
                                 <div class="chart-container" style="height: 500px;"><canvas id="lcoeChart"></canvas>
                                 </div>
                             </div>
                             <div class="chart-card">
-                                <h3>Power Generation - Solar Rooftop</h3>
+                                <div class="chart-title-row">
+                                    <h3>Power Generation - Solar Rooftop</h3>
+                                    <button class="btn secondary no-print chart-export-btn" onclick="app.exportChart('gen', 'generation_chart.png')">
+                                        <i data-lucide="image-down"></i> Export PNG
+                                    </button>
+                                </div>
                                 <div class="chart-container" style="height: 500px;"><canvas id="genChart"></canvas>
                                 </div>
                             </div>
@@ -231,6 +233,10 @@
                                 <option value="overview">Overview (By Supplier)</option>
                                 <option value="breakdown">Project Breakdown</option>
                             </select>
+                            <button class="btn secondary" style="padding: 4px 12px; font-size: 0.85rem;"
+                                onclick="app.exportChart('payback', 'payback_chart.png')">
+                                <i data-lucide="image-down"></i> Export PNG
+                            </button>
                             <button class="btn secondary" style="padding: 4px 12px; font-size: 0.85rem;"
                                 onclick="app.charts.payback.resetZoom()">
                                 <i data-lucide="zoom-out"></i> Reset Zoom

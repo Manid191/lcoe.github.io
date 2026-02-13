@@ -22,8 +22,8 @@ class SolarCalculator {
         const config = window.SolarConfig || { global: {}, suppliers: [] };
 
         this.defaultGlobal = config.global || {
-            period: 20, wacc: 6.0, utilityTariff: 4.5,
-            ppaDiscount: 10.0, degradation: 0.5, tariffEscalation: 2.0, opexInflation: 2.0
+            period: 20, wacc: 6.0,
+            degradation: 0.5, tariffEscalation: 2.0, opexInflation: 2.0
         };
 
         this.defaultSuppliers = config.suppliers || [];
@@ -37,6 +37,7 @@ class SolarCalculator {
 
 
     init() {
+        this.migrateLegacyData();
         this.loadInputs();
         this.renderSuppliers();
         this.renderViewControls();
@@ -46,6 +47,19 @@ class SolarCalculator {
     }
 
     // --- Persistence & Migration ---
+
+    migrateLegacyData() {
+        const legacyTariff = Number.isFinite(this.global.utilityTariff) ? this.global.utilityTariff : 4.5;
+
+        this.suppliers.forEach(supplier => {
+            supplier.projects.forEach(project => {
+                if (!Number.isFinite(project.utilityTariff)) project.utilityTariff = legacyTariff;
+            });
+        });
+
+        delete this.global.utilityTariff;
+        delete this.global.ppaDiscount;
+    }
 
     loadInputs() {
         // Sync inputs (Populate DOM with current in-memory defaults)
@@ -61,8 +75,7 @@ class SolarCalculator {
 
     getGlobalInputId(key) {
         const map = {
-            period: 'project-period', wacc: 'wacc', utilityTariff: 'utility-tariff',
-            ppaDiscount: 'ppa-discount', degradation: 'degradation',
+            period: 'project-period', wacc: 'wacc', degradation: 'degradation',
             tariffEscalation: 'tariff-escalation', opexInflation: 'opex-inflation'
         };
         return map[key];
@@ -103,6 +116,7 @@ class SolarCalculator {
                 if (confirm("Importing this file will overwrite your current data. Continue?")) {
                     this.global = data.global;
                     this.suppliers = data.suppliers;
+                    this.migrateLegacyData();
                     this.saveInputs(); // Save to local storage
                     this.calculateAndRender();
                     this.renderSuppliers(); // Refresh UI
@@ -141,11 +155,11 @@ class SolarCalculator {
 
     attachGlobalListeners() {
         // Global Inputs
-        ['project-period', 'wacc', 'utility-tariff', 'ppa-discount', 'degradation', 'tariff-escalation', 'opex-inflation'].forEach(id => {
+        ['project-period', 'wacc', 'degradation', 'tariff-escalation', 'opex-inflation'].forEach(id => {
             const el = document.getElementById(id);
             if (el) {
                 el.onchange = (e) => {
-                    const map = { 'project-period': 'period', 'utility-tariff': 'utilityTariff', 'ppa-discount': 'ppaDiscount', 'tariff-escalation': 'tariffEscalation', 'opex-inflation': 'opexInflation' };
+                    const map = { 'project-period': 'period', 'tariff-escalation': 'tariffEscalation', 'opex-inflation': 'opexInflation' };
                     this.updateConfig(map[id] || id, e.target.value);
                 };
             }
@@ -246,10 +260,30 @@ class SolarCalculator {
             });
         }
 
-        Chart.defaults.font.size = 14;
+        Chart.defaults.font.size = 13;
+        Chart.defaults.font.family = "'Inter', 'Prompt', sans-serif";
+        Chart.defaults.color = '#334155';
+        Chart.defaults.devicePixelRatio = 2;
+
         const common = {
-            responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { position: 'top' }, tooltip: { displayColors: true } }
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 450, easing: 'easeOutQuart' },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: { boxWidth: 14, boxHeight: 14, padding: 14, usePointStyle: true, pointStyle: 'rectRounded' }
+                },
+                tooltip: {
+                    displayColors: true,
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    titleColor: '#f8fafc',
+                    bodyColor: '#e2e8f0',
+                    padding: 10,
+                    borderColor: '#1e293b',
+                    borderWidth: 1
+                }
+            }
         };
 
         // 1. LCOE
@@ -279,8 +313,8 @@ class SolarCalculator {
                     },
                     plugins: {
                         datalabels: {
-                            display: true,
-                            font: { size: 10, weight: 'bold' },
+                            display: (ctx) => ctx.datasetIndex === 2,
+                            font: { size: 11, weight: 'bold' },
                             formatter: (v, ctx) => {
                                 if (ctx.datasetIndex === 2) { // Profit Top
                                     const total = dataR[ctx.dataIndex] ? dataR[ctx.dataIndex].avgTariff : 0;
@@ -308,7 +342,9 @@ class SolarCalculator {
                     datasets: [{
                         label: 'Year 1 Generation (kWh)',
                         data: dataR.map(r => r ? r.yearlyData[0].energy : 0),
-                        backgroundColor: '#3b82f6'
+                        backgroundColor: '#2563eb',
+                        borderRadius: 6,
+                        maxBarThickness: 56
                     }]
                 },
                 options: {
@@ -317,7 +353,7 @@ class SolarCalculator {
                         ...common.plugins,
                         datalabels: {
                             display: true,
-                            formatter: (value) => value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+                            formatter: (value) => value.toLocaleString(undefined, { maximumFractionDigits: 0 }),
                             anchor: 'end',
                             align: 'top',
                             offset: -5,
@@ -331,7 +367,7 @@ class SolarCalculator {
                                         label += ': ';
                                     }
                                     if (context.parsed.y !== null) {
-                                        label += context.parsed.y.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                        label += context.parsed.y.toLocaleString(undefined, { maximumFractionDigits: 0 }) + ' kWh';
                                     }
                                     return label;
                                 }
@@ -339,9 +375,11 @@ class SolarCalculator {
                         }
                     },
                     scales: {
+                        x: { ticks: { maxRotation: 0, minRotation: 0 } },
                         y: {
-                            afterFit: (axis) => { axis.width = 80; },
-                            grace: '15%'
+                            afterFit: (axis) => { axis.width = 88; },
+                            grace: '12%',
+                            ticks: { callback: (value) => Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 }) }
                         }
                     }
                 }
@@ -369,8 +407,9 @@ class SolarCalculator {
                             backgroundColor: this.getChartColor(i),
                             fill: false,
                             tension: 0.4,
-                            pointRadius: 3,
-                            pointHoverRadius: 6
+                            pointRadius: 2,
+                            pointHoverRadius: 5,
+                            borderWidth: 2.5
                         });
                     }
                 });
@@ -389,8 +428,9 @@ class SolarCalculator {
                                     borderDash: pIdx === 0 ? [] : [5, 5],
                                     fill: false,
                                     tension: 0.4,
-                                    pointRadius: 3,
-                                    pointHoverRadius: 6
+                                    pointRadius: 2,
+                                    pointHoverRadius: 5,
+                                    borderWidth: 2.2
                                 });
                             }
                         });
@@ -436,17 +476,7 @@ class SolarCalculator {
                                 font: { size: 12, family: "'Inter', sans-serif" }
                             }
                         },
-                        datalabels: {
-                            display: 'auto',
-                            formatter: (v) => (v / 1e6).toFixed(1) + 'M',
-                            align: 'top',
-                            anchor: 'end',
-                            font: { size: 10, weight: 'bold' },
-                            offset: 4,
-                            clamp: true,
-                            clip: false,
-                            color: '#475569' // Text Muted
-                        },
+                        datalabels: { display: false },
                         tooltip: {
                             backgroundColor: 'rgba(255, 255, 255, 0.95)',
                             titleColor: '#1e293b',
@@ -494,7 +524,7 @@ class SolarCalculator {
                             },
                             ticks: {
                                 callback: function (value) {
-                                    return (value / 1e6).toFixed(0) + 'M';
+                                    return (value / 1e6).toFixed(1) + 'M';
                                 },
                                 font: { size: 11 }
                             }
@@ -627,15 +657,37 @@ class SolarCalculator {
         }
     }
 
+    exportChart(chartKey, filename = 'chart.png') {
+        const chart = this.charts[chartKey];
+        if (!chart) return;
+
+        const link = document.createElement('a');
+        link.href = chart.toBase64Image('image/png', 1);
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
     updateConfig(key, val) {
         this.global[key] = parseFloat(val);
         this.saveInputs();
         this.calculateAndRender();
 
-        // Update display
-        const ppaY1 = this.global.utilityTariff * (1 - (this.global.ppaDiscount / 100));
-        const el = document.getElementById('ppa-price-y1-display');
-        if (el) el.textContent = ppaY1.toFixed(2);
+    }
+
+    getProjectUtilityTariff(project) {
+        return Number.isFinite(project.utilityTariff) ? project.utilityTariff : 4.5;
+    }
+
+    updateProjectUtilityTariffDisplay(sIdx, pIdx) {
+        const project = this.suppliers[sIdx]?.projects[pIdx];
+        const displayEl = document.getElementById(`ppa-price-y1-display-${sIdx}-${pIdx}`);
+        if (!project || !displayEl) return;
+
+        const tariff = this.getProjectUtilityTariff(project);
+        const ppaY1 = tariff * (1 - (project.ppaDiscount / 100));
+        displayEl.textContent = ppaY1.toFixed(2);
     }
 
     // --- UI Rendering ---
@@ -673,15 +725,6 @@ class SolarCalculator {
         this.renderCharts();
         this.renderSummaryTable();
         this.renderSummaryReportPage();
-    }
-
-    updateProject(sIdx, pIdx, field, value) {
-        if (field === 'name') {
-            this.suppliers[sIdx].projects[pIdx].name = value;
-        } else {
-            this.suppliers[sIdx].projects[pIdx][field] = parseFloat(value) || 0;
-        }
-        this.calculateAndRender();
     }
 
     renderSuppliers() {
@@ -749,9 +792,17 @@ class SolarCalculator {
                         <label>Prod Hour</label>
                         <input type="number" step="0.01" value="${p.prodHour}" onchange="app.updateProject(${sIdx}, ${pIdx}, 'prodHour', this.value)">
                     </div>
+                    <div class="input-group">
+                        <label>Utility Tariff (THB/kWh)</label>
+                        <input type="number" step="0.01" value="${this.getProjectUtilityTariff(p)}" onchange="app.updateProject(${sIdx}, ${pIdx}, 'utilityTariff', this.value)">
+                    </div>
                      <div class="input-group">
                         <label>Discount (%)</label>
                         <input type="number" step="0.1" value="${p.ppaDiscount}" onchange="app.updateProject(${sIdx}, ${pIdx}, 'ppaDiscount', this.value)">
+                    </div>
+                    <div class="input-group highlight">
+                        <label>PPA Price Year 1 (THB)</label>
+                        <div id="ppa-price-y1-display-${sIdx}-${pIdx}" class="highlight-val">-</div>
                     </div>
                     <div class="input-group">
                         <label>CAPEX</label>
@@ -776,6 +827,7 @@ class SolarCalculator {
             // Render OPEX for each project
             s.projects.forEach((p, pIdx) => {
                 this.renderOpexItems(sIdx, pIdx);
+                this.updateProjectUtilityTariffDisplay(sIdx, pIdx);
             });
         });
         if (window.lucide) lucide.createIcons();
@@ -857,7 +909,15 @@ class SolarCalculator {
         this.suppliers[sIdx].projects[pIdx][key] = val;
         this.saveInputs();
         this.calculateAndRender();
-        if (key === 'capex' || key === 'kwp') this.renderSuppliers(); // Update overview stats
+
+        if (key === 'capex' || key === 'kwp') {
+            this.renderSuppliers(); // Update overview stats
+            return;
+        }
+
+        if (key === 'ppaDiscount' || key === 'utilityTariff') {
+            this.updateProjectUtilityTariffDisplay(sIdx, pIdx);
+        }
     }
 
     updateOpex(sIdx, pIdx, oIdx, key, val) {
@@ -930,8 +990,20 @@ class SolarCalculator {
             // Grid Cost = Energy * UtilityTariff
             // Solar Cost (Revenue) = Energy * PPA Price
             // Savings = Grid Cost - Solar Cost
-            const tariffY1 = this.global.utilityTariff; // Base tariff Year 1
-            const gridCost = y1.energy * tariffY1;
+            let gridCost = 0;
+            if (item.res.meta) {
+                const tariffY1 = this.getProjectUtilityTariff(item.res.meta);
+                gridCost = y1.energy * tariffY1;
+            } else if (item.res.projects) {
+                gridCost = item.res.projects.reduce((sum, projectRes) => {
+                    if (!projectRes || !projectRes.meta || !projectRes.yearlyData || !projectRes.yearlyData[0]) return sum;
+                    const tariffY1 = this.getProjectUtilityTariff(projectRes.meta);
+                    return sum + (projectRes.yearlyData[0].energy * tariffY1);
+                }, 0);
+            } else {
+                gridCost = y1.energy * 4.5;
+            }
+
             const solarCost = y1.revenue;
             const savingsYear = gridCost - solarCost;
 
