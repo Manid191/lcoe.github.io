@@ -30,6 +30,7 @@ class SolarCalculator {
 
         this.suppliers = JSON.parse(JSON.stringify(this.defaultSuppliers));
         this.global = JSON.parse(JSON.stringify(this.defaultGlobal));
+        this.sharedProjectTab = this.suppliers[0]?.activeTab ?? 0;
         this.charts = {};
 
         this.init();
@@ -117,6 +118,7 @@ class SolarCalculator {
                     this.global = data.global;
                     this.suppliers = data.suppliers;
                     this.migrateLegacyData();
+                    this.sharedProjectTab = this.suppliers[0]?.activeTab ?? 0;
                     this.saveInputs(); // Save to local storage
                     this.calculateAndRender();
                     this.renderSuppliers(); // Refresh UI
@@ -825,16 +827,16 @@ class SolarCalculator {
 
             // Tabs
             html += `<div class="project-tabs">`;
-            html += `<button class="project-tab-btn ${s.activeTab === 0 ? 'active' : ''}" onclick="app.switchProjectTab(${sIdx}, 0)">Overview</button>`;
+            html += `<button class="project-tab-btn ${this.sharedProjectTab === 0 ? 'active' : ''}" onclick="app.switchProjectTab(${sIdx}, 0)">Overview</button>`;
             s.projects.forEach((p, pIdx) => {
-                html += `<button class="project-tab-btn ${s.activeTab === (pIdx + 1) ? 'active' : ''}" onclick="app.switchProjectTab(${sIdx}, ${pIdx + 1})">Proj ${pIdx + 1}</button>`;
+                html += `<button class="project-tab-btn ${this.sharedProjectTab === (pIdx + 1) ? 'active' : ''}" onclick="app.switchProjectTab(${sIdx}, ${pIdx + 1})">Proj ${pIdx + 1}</button>`;
             });
             html += `</div>`;
 
             // Overview Content (Read Only)
             const agg = this.results ? this.results[sIdx] : null;
             html += `
-        <div class="project-content ${s.activeTab === 0 ? 'active' : ''}">
+        <div class="project-content ${this.sharedProjectTab === 0 ? 'active' : ''}">
             <div class="overview-stats">
                 <div class="stat-box"><h4>Total kWp</h4><div class="val">${agg ? agg.totalKwp.toLocaleString() : '-'}</div></div>
                 <div class="stat-box"><h4>Total CAPEX</h4><div class="val">${agg ? (agg.totalCapex / 1e6).toFixed(2) + 'M' : '-'}</div></div>
@@ -847,7 +849,7 @@ class SolarCalculator {
 
             // Project Contents
             s.projects.forEach((p, pIdx) => {
-                const isActive = s.activeTab === (pIdx + 1);
+                const isActive = this.sharedProjectTab === (pIdx + 1);
                 html += `
             <div class="project-content ${isActive ? 'active' : ''}">
                 <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
@@ -953,7 +955,8 @@ class SolarCalculator {
     }
 
     switchProjectTab(sIdx, tabIdx) {
-        this.suppliers[sIdx].activeTab = tabIdx;
+        this.sharedProjectTab = tabIdx;
+        this.suppliers.forEach(supplier => supplier.activeTab = tabIdx);
         this.renderSuppliers(); // Re-render to update UI state
     }
 
@@ -973,10 +976,15 @@ class SolarCalculator {
     }
 
     toggleProject(sIdx, pIdx) {
-        this.suppliers[sIdx].projects[pIdx].enabled = !this.suppliers[sIdx].projects[pIdx].enabled;
+        const nextEnabled = !this.suppliers[sIdx].projects[pIdx].enabled;
+
+        this.suppliers.forEach(supplier => {
+            if (supplier.projects[pIdx]) supplier.projects[pIdx].enabled = nextEnabled;
+        });
+
         this.saveInputs();
         this.calculateAndRender();
-        this.renderSuppliers(); // Re-render for error msg
+        this.renderSuppliers(); // Re-render for synced state
     }
 
     updateProject(sIdx, pIdx, key, val) {
