@@ -260,10 +260,30 @@ class SolarCalculator {
             });
         }
 
-        Chart.defaults.font.size = 14;
+        Chart.defaults.font.size = 13;
+        Chart.defaults.font.family = "'Inter', 'Prompt', sans-serif";
+        Chart.defaults.color = '#334155';
+        Chart.defaults.devicePixelRatio = 2;
+
         const common = {
-            responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { position: 'top' }, tooltip: { displayColors: true } }
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 450, easing: 'easeOutQuart' },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: { boxWidth: 14, boxHeight: 14, padding: 14, usePointStyle: true, pointStyle: 'rectRounded' }
+                },
+                tooltip: {
+                    displayColors: true,
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    titleColor: '#f8fafc',
+                    bodyColor: '#e2e8f0',
+                    padding: 10,
+                    borderColor: '#1e293b',
+                    borderWidth: 1
+                }
+            }
         };
 
         // 1. LCOE
@@ -293,8 +313,8 @@ class SolarCalculator {
                     },
                     plugins: {
                         datalabels: {
-                            display: true,
-                            font: { size: 10, weight: 'bold' },
+                            display: (ctx) => ctx.datasetIndex === 2,
+                            font: { size: 11, weight: 'bold' },
                             formatter: (v, ctx) => {
                                 if (ctx.datasetIndex === 2) { // Profit Top
                                     const total = dataR[ctx.dataIndex] ? dataR[ctx.dataIndex].avgTariff : 0;
@@ -322,7 +342,9 @@ class SolarCalculator {
                     datasets: [{
                         label: 'Year 1 Generation (kWh)',
                         data: dataR.map(r => r ? r.yearlyData[0].energy : 0),
-                        backgroundColor: '#3b82f6'
+                        backgroundColor: '#2563eb',
+                        borderRadius: 6,
+                        maxBarThickness: 56
                     }]
                 },
                 options: {
@@ -331,7 +353,7 @@ class SolarCalculator {
                         ...common.plugins,
                         datalabels: {
                             display: true,
-                            formatter: (value) => value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+                            formatter: (value) => value.toLocaleString(undefined, { maximumFractionDigits: 0 }),
                             anchor: 'end',
                             align: 'top',
                             offset: -5,
@@ -345,7 +367,7 @@ class SolarCalculator {
                                         label += ': ';
                                     }
                                     if (context.parsed.y !== null) {
-                                        label += context.parsed.y.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                        label += context.parsed.y.toLocaleString(undefined, { maximumFractionDigits: 0 }) + ' kWh';
                                     }
                                     return label;
                                 }
@@ -353,9 +375,11 @@ class SolarCalculator {
                         }
                     },
                     scales: {
+                        x: { ticks: { maxRotation: 0, minRotation: 0 } },
                         y: {
-                            afterFit: (axis) => { axis.width = 80; },
-                            grace: '15%'
+                            afterFit: (axis) => { axis.width = 88; },
+                            grace: '12%',
+                            ticks: { callback: (value) => Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 }) }
                         }
                     }
                 }
@@ -383,8 +407,9 @@ class SolarCalculator {
                             backgroundColor: this.getChartColor(i),
                             fill: false,
                             tension: 0.4,
-                            pointRadius: 3,
-                            pointHoverRadius: 6
+                            pointRadius: 2,
+                            pointHoverRadius: 5,
+                            borderWidth: 2.5
                         });
                     }
                 });
@@ -403,8 +428,9 @@ class SolarCalculator {
                                     borderDash: pIdx === 0 ? [] : [5, 5],
                                     fill: false,
                                     tension: 0.4,
-                                    pointRadius: 3,
-                                    pointHoverRadius: 6
+                                    pointRadius: 2,
+                                    pointHoverRadius: 5,
+                                    borderWidth: 2.2
                                 });
                             }
                         });
@@ -450,17 +476,7 @@ class SolarCalculator {
                                 font: { size: 12, family: "'Inter', sans-serif" }
                             }
                         },
-                        datalabels: {
-                            display: 'auto',
-                            formatter: (v) => (v / 1e6).toFixed(1) + 'M',
-                            align: 'top',
-                            anchor: 'end',
-                            font: { size: 10, weight: 'bold' },
-                            offset: 4,
-                            clamp: true,
-                            clip: false,
-                            color: '#475569' // Text Muted
-                        },
+                        datalabels: { display: false },
                         tooltip: {
                             backgroundColor: 'rgba(255, 255, 255, 0.95)',
                             titleColor: '#1e293b',
@@ -508,7 +524,7 @@ class SolarCalculator {
                             },
                             ticks: {
                                 callback: function (value) {
-                                    return (value / 1e6).toFixed(0) + 'M';
+                                    return (value / 1e6).toFixed(1) + 'M';
                                 },
                                 font: { size: 11 }
                             }
@@ -641,6 +657,18 @@ class SolarCalculator {
         }
     }
 
+    exportChart(chartKey, filename = 'chart.png') {
+        const chart = this.charts[chartKey];
+        if (!chart) return;
+
+        const link = document.createElement('a');
+        link.href = chart.toBase64Image('image/png', 1);
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
     updateConfig(key, val) {
         this.global[key] = parseFloat(val);
         this.saveInputs();
@@ -650,20 +678,6 @@ class SolarCalculator {
 
     getProjectUtilityTariff(project) {
         return Number.isFinite(project.utilityTariff) ? project.utilityTariff : 4.5;
-    }
-
-    updateProjectUtilityTariffDisplay(sIdx, pIdx) {
-        const project = this.suppliers[sIdx]?.projects[pIdx];
-        const displayEl = document.getElementById(`ppa-price-y1-display-${sIdx}-${pIdx}`);
-        if (!project || !displayEl) return;
-
-        const tariff = this.getProjectUtilityTariff(project);
-        const ppaY1 = tariff * (1 - (project.ppaDiscount / 100));
-        displayEl.textContent = ppaY1.toFixed(2);
-    }
-
-    getProjectUtilityTariff(project) {
-        return Number.isFinite(project.utilityTariff) ? project.utilityTariff : this.global.utilityTariff;
     }
 
     updateProjectUtilityTariffDisplay(sIdx, pIdx) {
