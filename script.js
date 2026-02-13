@@ -638,6 +638,20 @@ class SolarCalculator {
         if (el) el.textContent = ppaY1.toFixed(2);
     }
 
+    getProjectUtilityTariff(project) {
+        return Number.isFinite(project.utilityTariff) ? project.utilityTariff : this.global.utilityTariff;
+    }
+
+    updateProjectUtilityTariffDisplay(sIdx, pIdx) {
+        const project = this.suppliers[sIdx]?.projects[pIdx];
+        const displayEl = document.getElementById(`ppa-price-y1-display-${sIdx}-${pIdx}`);
+        if (!project || !displayEl) return;
+
+        const tariff = this.getProjectUtilityTariff(project);
+        const ppaY1 = tariff * (1 - (project.ppaDiscount / 100));
+        displayEl.textContent = ppaY1.toFixed(2);
+    }
+
     // --- UI Rendering ---
 
     renderViewControls() {
@@ -673,15 +687,6 @@ class SolarCalculator {
         this.renderCharts();
         this.renderSummaryTable();
         this.renderSummaryReportPage();
-    }
-
-    updateProject(sIdx, pIdx, field, value) {
-        if (field === 'name') {
-            this.suppliers[sIdx].projects[pIdx].name = value;
-        } else {
-            this.suppliers[sIdx].projects[pIdx][field] = parseFloat(value) || 0;
-        }
-        this.calculateAndRender();
     }
 
     renderSuppliers() {
@@ -749,9 +754,17 @@ class SolarCalculator {
                         <label>Prod Hour</label>
                         <input type="number" step="0.01" value="${p.prodHour}" onchange="app.updateProject(${sIdx}, ${pIdx}, 'prodHour', this.value)">
                     </div>
+                    <div class="input-group">
+                        <label>Utility Tariff (THB/kWh)</label>
+                        <input type="number" step="0.01" value="${this.getProjectUtilityTariff(p)}" onchange="app.updateProject(${sIdx}, ${pIdx}, 'utilityTariff', this.value)">
+                    </div>
                      <div class="input-group">
                         <label>Discount (%)</label>
                         <input type="number" step="0.1" value="${p.ppaDiscount}" onchange="app.updateProject(${sIdx}, ${pIdx}, 'ppaDiscount', this.value)">
+                    </div>
+                    <div class="input-group highlight">
+                        <label>PPA Price Year 1 (THB)</label>
+                        <div id="ppa-price-y1-display-${sIdx}-${pIdx}" class="highlight-val">-</div>
                     </div>
                     <div class="input-group">
                         <label>CAPEX</label>
@@ -776,6 +789,7 @@ class SolarCalculator {
             // Render OPEX for each project
             s.projects.forEach((p, pIdx) => {
                 this.renderOpexItems(sIdx, pIdx);
+                this.updateProjectUtilityTariffDisplay(sIdx, pIdx);
             });
         });
         if (window.lucide) lucide.createIcons();
@@ -857,7 +871,15 @@ class SolarCalculator {
         this.suppliers[sIdx].projects[pIdx][key] = val;
         this.saveInputs();
         this.calculateAndRender();
-        if (key === 'capex' || key === 'kwp') this.renderSuppliers(); // Update overview stats
+
+        if (key === 'capex' || key === 'kwp') {
+            this.renderSuppliers(); // Update overview stats
+            return;
+        }
+
+        if (key === 'ppaDiscount' || key === 'utilityTariff') {
+            this.updateProjectUtilityTariffDisplay(sIdx, pIdx);
+        }
     }
 
     updateOpex(sIdx, pIdx, oIdx, key, val) {
@@ -930,8 +952,20 @@ class SolarCalculator {
             // Grid Cost = Energy * UtilityTariff
             // Solar Cost (Revenue) = Energy * PPA Price
             // Savings = Grid Cost - Solar Cost
-            const tariffY1 = this.global.utilityTariff; // Base tariff Year 1
-            const gridCost = y1.energy * tariffY1;
+            let gridCost = 0;
+            if (item.res.meta) {
+                const tariffY1 = this.getProjectUtilityTariff(item.res.meta);
+                gridCost = y1.energy * tariffY1;
+            } else if (item.res.projects) {
+                gridCost = item.res.projects.reduce((sum, projectRes) => {
+                    if (!projectRes || !projectRes.meta || !projectRes.yearlyData || !projectRes.yearlyData[0]) return sum;
+                    const tariffY1 = this.getProjectUtilityTariff(projectRes.meta);
+                    return sum + (projectRes.yearlyData[0].energy * tariffY1);
+                }, 0);
+            } else {
+                gridCost = y1.energy * this.global.utilityTariff;
+            }
+
             const solarCost = y1.revenue;
             const savingsYear = gridCost - solarCost;
 

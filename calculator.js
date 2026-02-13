@@ -25,7 +25,8 @@ window.Calculator = {
         };
 
         const e1 = project.kwp * project.prodHour * 365;
-        const sellY1 = global.utilityTariff * (1 - (project.ppaDiscount / 100));
+        const utilityTariff = Number.isFinite(project.utilityTariff) ? project.utilityTariff : global.utilityTariff;
+        const sellY1 = utilityTariff * (1 - (project.ppaDiscount / 100));
 
         const r = global.wacc / 100;
         const deg = global.degradation / 100;
