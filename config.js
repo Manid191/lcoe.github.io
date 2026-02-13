@@ -7,8 +7,6 @@ window.SolarConfig = {
     global: {
         period: 20,
         wacc: 6.0,
-        utilityTariff: 4.5,
-        ppaDiscount: 10.0,
         degradation: 0.5,
         tariffEscalation: 2.0,
         opexInflation: 2.0
@@ -48,6 +46,7 @@ function createDefaultProjects(count, firstEnabled) {
         kwp: 100,
         prodHour: 3.65,
         capex: 3500000,
+        utilityTariff: 4.5,
         ppaDiscount: 10.0,
         enabled: i === 0 && firstEnabled, // First project of first supplier enabled
         opex: [{ name: "O&M", type: "per_kwp", unit: 500, freq: 1 }]

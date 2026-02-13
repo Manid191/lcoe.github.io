@@ -25,7 +25,8 @@ window.Calculator = {
         };
 
         const e1 = project.kwp * project.prodHour * 365;
-        const sellY1 = global.utilityTariff * (1 - (project.ppaDiscount / 100));
+        const utilityTariff = Number.isFinite(project.utilityTariff) ? project.utilityTariff : 4.5;
+        const sellY1 = utilityTariff * (1 - (project.ppaDiscount / 100));
 
         const r = global.wacc / 100;
         const deg = global.degradation / 100;
@@ -130,7 +131,6 @@ window.Calculator = {
                 agg.yearlyData[i].revenue += yd.revenue;
                 agg.yearlyData[i].opex += yd.opex;
                 agg.yearlyData[i].netCF += yd.netCF;
-                agg.yearlyData[i].tariff = yd.tariff; // Same for all usually, or avg? Taking one is simplified
             });
         });
 
@@ -138,23 +138,11 @@ window.Calculator = {
         supplier.projects.forEach(p => { if (p.enabled) agg.totalKwp += p.kwp; });
 
         // Calculate Metrics based on Aggregates
-        let cumulative = 0;
-        let paybackFound = false;
-        agg.payback = global.period + 1;
-
+        let cumulative = agg.cashflows[0];
         agg.yearlyData.forEach((d, i) => {
-            // Year 0 is cashflows[0]
-            if (i === 0) cumulative += agg.cashflows[0];
-
-            const prev = cumulative;
-            cumulative += d.netCF;
+            cumulative += agg.cashflows[i + 1];
             d.cumulativeCF = cumulative;
-
-            if (!paybackFound && cumulative >= 0) {
-                const fraction = Math.abs(prev) / d.netCF;
-                agg.payback = (d.year - 1) + fraction;
-                paybackFound = true;
-            }
+            d.tariff = d.energy > 0 ? (d.revenue / d.energy) : 0;
         });
 
         this.calculateFinancials(agg, global);
@@ -166,6 +154,24 @@ window.Calculator = {
         });
 
         return agg;
+    },
+
+    calculatePayback(cashflows, period) {
+        if (!cashflows || cashflows.length < 2) return period + 1;
+
+        let cumulative = cashflows[0];
+        for (let year = 1; year < cashflows.length; year++) {
+            const annual = cashflows[year];
+            const prev = cumulative;
+            cumulative += annual;
+
+            if (cumulative >= 0) {
+                if (annual <= 0) return year;
+                return (year - 1) + (Math.abs(prev) / annual);
+            }
+        }
+
+        return period + 1;
     },
 
     calculateFinancials(res, global) {
@@ -183,6 +189,7 @@ window.Calculator = {
             res.profitMargin = 0;
         }
 
+        res.payback = this.calculatePayback(res.cashflows, global.period);
         res.irr = this.calculateIRR(res.cashflows);
         res.npv = res.pvRevenue - (res.totalCapex + res.pvOpex);
         res.roi = this.calculateROI(res.totalRevenue, res.totalOpexNominal, res.totalCapex);
