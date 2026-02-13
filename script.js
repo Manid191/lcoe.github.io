@@ -657,16 +657,91 @@ class SolarCalculator {
         }
     }
 
-    exportChart(chartKey, filename = 'chart.png') {
+    getTimestampSuffix() {
+        const now = new Date();
+        const pad = (v) => String(v).padStart(2, '0');
+        return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+    }
+
+    buildExportFilename(filename, preset) {
+        const base = filename.endsWith('.png') ? filename.slice(0, -4) : filename;
+        return `${base}_${preset}_${this.getTimestampSuffix()}.png`;
+    }
+
+    buildExportCanvas(chart, preset = 'ppt') {
+        const canvas = chart.canvas;
+        const presets = {
+            ppt: { width: 1920, height: 1080, padding: 64, titleSize: 36, subtitleSize: 20 },
+            report: { width: 1600, height: 1200, padding: 60, titleSize: 34, subtitleSize: 18 },
+            native: { width: canvas.width, height: canvas.height, padding: 24, titleSize: 26, subtitleSize: 16 }
+        };
+
+        const cfg = presets[preset] || presets.ppt;
+        const exportCanvas = document.createElement('canvas');
+        exportCanvas.width = cfg.width;
+        exportCanvas.height = cfg.height;
+        const ctx = exportCanvas.getContext('2d');
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, cfg.width, cfg.height);
+
+        const chartTitle = chart.options?.plugins?.title?.text || chart.canvas.closest('.chart-card')?.querySelector('h3')?.textContent || chart.canvas.closest('.card')?.querySelector('h3')?.textContent || 'Chart Export';
+        const now = new Date();
+        const subtitle = `Generated ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
+
+        ctx.fillStyle = '#0f172a';
+        ctx.font = `700 ${cfg.titleSize}px Inter, Prompt, sans-serif`;
+        ctx.fillText(chartTitle, cfg.padding, cfg.padding);
+
+        ctx.fillStyle = '#64748b';
+        ctx.font = `500 ${cfg.subtitleSize}px Inter, Prompt, sans-serif`;
+        ctx.fillText(subtitle, cfg.padding, cfg.padding + cfg.subtitleSize + 12);
+
+        const topOffset = cfg.padding + cfg.subtitleSize + 40;
+        const drawW = cfg.width - (cfg.padding * 2);
+        const drawH = cfg.height - topOffset - cfg.padding;
+
+        ctx.drawImage(canvas, cfg.padding, topOffset, drawW, drawH);
+        return exportCanvas;
+    }
+
+    exportChart(chartKey, filename = 'chart.png', presetSelectorId = 'export-preset-results') {
         const chart = this.charts[chartKey];
-        if (!chart) return;
+        if (!chart || !chart.canvas) return;
+
+        const preset = document.getElementById(presetSelectorId)?.value || 'ppt';
+        const exportCanvas = this.buildExportCanvas(chart, preset);
 
         const link = document.createElement('a');
-        link.href = chart.toBase64Image('image/png', 1);
-        link.download = filename;
+        link.href = exportCanvas.toDataURL('image/png');
+        link.download = this.buildExportFilename(filename, preset);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    }
+
+    async copyChartToClipboard(chartKey, presetSelectorId = 'export-preset-results') {
+        const chart = this.charts[chartKey];
+        if (!chart || !chart.canvas) return;
+
+        const preset = document.getElementById(presetSelectorId)?.value || 'ppt';
+
+        if (!navigator.clipboard || !window.ClipboardItem) {
+            alert('Clipboard API is not supported in this browser. Please use Export PNG instead.');
+            return;
+        }
+
+        try {
+            const exportCanvas = this.buildExportCanvas(chart, preset);
+            const blob = await new Promise(resolve => exportCanvas.toBlob(resolve, 'image/png'));
+            if (!blob) throw new Error('Failed to create chart image blob.');
+
+            await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+            alert('Chart copied to clipboard. You can paste into PowerPoint now.');
+        } catch (err) {
+            console.error('Copy chart failed:', err);
+            alert('Unable to copy chart to clipboard in this environment. Please use Export PNG.');
+        }
     }
 
     updateConfig(key, val) {
